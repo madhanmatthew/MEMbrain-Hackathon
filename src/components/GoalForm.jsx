@@ -1,4 +1,5 @@
-import { useState } from 'react'
+
+import { storeMemory, waitForJob } from '../api/membrain'
 
 export default function GoalForm({ onGoalCreated }) {
   const [name, setName] = useState('')
@@ -7,21 +8,27 @@ export default function GoalForm({ onGoalCreated }) {
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
-    if (!name || !why) return
-    setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
+  if (!name || !why) return
+  setLoading(true)
+  try {
+    const res = await storeMemory({
+      content: `Goal: ${name}. Reason: ${why}`,
+      metadata: { type: 'goal', name, target, why, createdAt: new Date().toISOString() }
+    })
+    if (res.job_id) await waitForJob(res.job_id)
     onGoalCreated({
-      id: Date.now(),
-      name,
-      target,
-      why,
-      health: Math.random() * 0.5 + 0.5,
+      id: res.memory_id ?? Date.now(),
+      name, target, why,
+      health: 1.0,
       createdAt: new Date().toISOString(),
       events: []
     })
     setName(''); setTarget(''); setWhy('')
-    setLoading(false)
+  } catch (err) {
+    console.error('Failed to save goal:', err)
   }
+  setLoading(false)
+}
 
   return (
     <div style={{

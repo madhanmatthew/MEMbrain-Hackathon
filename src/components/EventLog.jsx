@@ -1,22 +1,35 @@
 import { useState } from 'react'
-
+import { storeMemory, waitForJob } from '../api/membrain'
 export default function EventLog({ goal, onEventAdded }) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleLog = async () => {
-    if (!text.trim()) return
-    setLoading(true)
-    await new Promise(r => setTimeout(r, 500))
+  if (!text.trim()) return
+  setLoading(true)
+  try {
+    const res = await storeMemory({
+      content: text,
+      metadata: {
+        type: 'event',
+        goalId: goal.id,
+        goalName: goal.name,
+        date: new Date().toISOString()
+      }
+    })
+    if (res.job_id) await waitForJob(res.job_id)
     onEventAdded(goal.id, {
-      id: Date.now(),
+      id: res.memory_id ?? Date.now(),
       text,
       date: new Date().toLocaleDateString(),
-      sentiment: text.length > 30 ? 'positive' : 'neutral'
+      sentiment: 'positive'
     })
     setText('')
-    setLoading(false)
+  } catch (err) {
+    console.error('Failed to log event:', err)
   }
+  setLoading(false)
+}
 
   return (
     <div style={{

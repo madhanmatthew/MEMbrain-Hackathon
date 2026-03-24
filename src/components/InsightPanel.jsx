@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { searchMemories } from '../api/membrain'
 
 export default function InsightPanel({ goals }) {
   const [query, setQuery] = useState('')
@@ -10,16 +11,20 @@ export default function InsightPanel({ goals }) {
     if (!query.trim()) return
     setLoading(true)
     setSearched(true)
-    await new Promise(r => setTimeout(r, 800))
-
-    const mockInsights = goals.map(g => ({
-      goalName: g.name,
-      insight: `Based on your events, this goal is ${g.health > 0.6 ? 'on track' : 'needs attention'}. ${g.events?.length ?? 0} events logged.`,
-      score: (g.health * 100).toFixed(0),
-      health: g.health
-    })).sort((a, b) => b.score - a.score)
-
-    setResults(mockInsights.slice(0, 3))
+    try {
+      const data = await searchMemories(query)
+      const memories = data.results ?? data.memories ?? []
+      const mapped = memories.slice(0, 3).map(m => ({
+        goalName: m.metadata?.name ?? m.metadata?.goalName ?? m.metadata?.type ?? 'Related memory',
+        insight: m.content ?? m.text ?? m.metadata?.why ?? 'No content available',
+        score: m.score ? (m.score * 100).toFixed(0) : null,
+        health: m.score ?? 0.7
+      }))
+      setResults(mapped)
+    } catch (err) {
+      console.error('Search failed:', err)
+      setResults([])
+    }
     setLoading(false)
   }
 
@@ -94,19 +99,25 @@ export default function InsightPanel({ goals }) {
           borderLeft: '3px solid var(--purple)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>{r.goalName}</p>
-            <span style={{
-              fontSize: '11px',
-              background: 'var(--bg2)',
-              color: 'var(--purple)',
-              padding: '2px 8px',
-              borderRadius: '99px',
-              border: '1px solid var(--border)'
-            }}>
-              {r.score}% match
-            </span>
+            <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>
+              {r.goalName}
+            </p>
+            {r.score && (
+              <span style={{
+                fontSize: '11px',
+                background: 'var(--bg2)',
+                color: 'var(--purple)',
+                padding: '2px 8px',
+                borderRadius: '99px',
+                border: '1px solid var(--border)'
+              }}>
+                {r.score}% match
+              </span>
+            )}
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>{r.insight}</p>
+          <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+            {r.insight}
+          </p>
         </div>
       ))}
 
@@ -115,7 +126,7 @@ export default function InsightPanel({ goals }) {
           {['Why is my top goal off track?', 'Which goal needs attention?', 'What patterns do you see?'].map(q => (
             <button
               key={q}
-              onClick={() => { setQuery(q); }}
+              onClick={() => setQuery(q)}
               style={{
                 background: 'transparent',
                 border: '1px solid var(--border)',
