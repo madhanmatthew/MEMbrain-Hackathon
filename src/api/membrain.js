@@ -1,38 +1,43 @@
 const API_KEY = import.meta.env.VITE_MEMBRAIN_API_KEY;
-const BASE_URL = "https://mem-brain-api-cutover-v4-production.up.railway.app";
+const BASE_URL = "https://mem-brain-api-cutover-v4-production.up.railway.app/api/v1";
 
-// helper function
-async function request(endpoint, body = {}) {
+// 🔹 helper
+async function request(endpoint, method = "POST", body = null) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": API_KEY,
     },
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : null,
   });
 
   const data = await res.json();
-  console.log("API Response:", data); // for debugging
+  console.log("API Response:", data);
   return data;
 }
 
-// 🔹 STORE MEMORY
+// ✅ CREATE MEMORY
 export async function storeMemory(memory) {
-  return request("/memory", memory);
+  return request("/memories", "POST", {
+    content: memory.content,
+    metadata: memory.metadata || {},
+  });
 }
 
-// 🔹 SEARCH
+// ✅ SEARCH (SEMANTIC)
 export async function searchMemories(query) {
-  return request("/search", { query });
+  return request("/memories/search", "POST", {
+    query,
+  });
 }
 
-// 🔹 GRAPH
-export async function getGraph() {
-  return request("/graph");
+// ✅ GET GRAPH (we’ll use neighborhood)
+export async function getGraph(memoryId) {
+  return request(`/graph/neighborhood?memory_id=${memoryId}`, "GET");
 }
 
-// 🔹 DECAY
-export async function getDecay() {
-  return request("/decay");
+// ✅ STATS (instead of decay for now)
+export async function getStats() {
+  return request("/stats", "GET");
 }
