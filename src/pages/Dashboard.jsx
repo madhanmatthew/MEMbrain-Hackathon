@@ -6,6 +6,7 @@ import InsightPanel from '../components/InsightPanel'
 import Constellation from '../components/Constellation'
 
 export default function Dashboard() {
+  const [highlightText, setHighlightText] = useState('')
   const [goals, setGoals] = useState([
     {
       id: 1,
@@ -88,12 +89,12 @@ export default function Dashboard() {
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <InsightPanel goals={goals} />
+                <InsightPanel goals={goals} onHighlight={setHighlightText} />
               </div>
             </div>
 
             {/* 🌌 FULL WIDTH GRAPH */}
-            <Constellation goals={goals} />
+            <Constellation goals={goals} highlightText={highlightText} />
 
           </div>
         ) : (

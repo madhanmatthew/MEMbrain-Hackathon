@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 
-export default function Constellation({ goals }) {
+export default function Constellation({ goals, highlightText }) {
   const ref = useRef()
 
   useEffect(() => {
@@ -90,17 +90,28 @@ export default function Constellation({ goals }) {
       .data(nodes)
       .enter()
       .append("circle")
-      .attr("r", d => d.type === "goal" ? 18 : 8)
-      .attr("fill", d => d.type === "goal" ? "#EF9F27" : "#1D9E75")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", d => d.type === "goal" ? 2 : 0)
-      .attr("filter", "url(#glow)")
-      .style("cursor", "pointer")
-      .call(d3.drag()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended)
-      )
+      .attr("r", d => {
+      if (highlightText && d.label.toLowerCase().includes(highlightText.toLowerCase())) {
+        return d.type === "goal" ? 22 : 12
+  }
+  return d.type === "goal" ? 18 : 8
+})
+.attr("fill", d => d.type === "goal" ? "#EF9F27" : "#1D9E75")
+.attr("stroke", d => {
+  if (!highlightText) return d.type === "goal" ? "#fff" : "none"
+
+  return d.label.toLowerCase().includes(highlightText.toLowerCase())
+    ? "#ff4d4d"
+    : (d.type === "goal" ? "#fff" : "none")
+})
+.attr("stroke-width", d => {
+  if (!highlightText) return d.type === "goal" ? 2 : 0
+
+  return d.label.toLowerCase().includes(highlightText.toLowerCase())
+    ? 4
+    : (d.type === "goal" ? 2 : 0)
+})
+      
 
     // 📝 Labels (only goals)
     const text = container.append("g")
