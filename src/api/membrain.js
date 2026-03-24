@@ -41,3 +41,21 @@ export async function getGraph(memoryId) {
 export async function getStats() {
   return request("/stats", "GET");
 }
+console.log("API KEY:", API_KEY);
+
+// ✅ GET JOB RESULT
+export async function getMemoryJob(jobId) {
+  const res = await fetch(
+    `${BASE_URL}/memories/jobs/${jobId}`,
+    {
+      method: "GET",
+      headers: {
+        "x-api-key": API_KEY,
+      },
+    }
+  );
+
+  const data = await res.json();
+  console.log("JOB RESULT:", data);
+  return data;
+}
