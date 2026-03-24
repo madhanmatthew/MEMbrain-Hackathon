@@ -44,7 +44,6 @@ export async function getMemoryJob(jobId) {
   return data;
 }
 
-// THIS IS THE KEY ADDITION — polls until job is done
 export async function waitForJob(jobId, maxAttempts = 12) {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, 700));
@@ -54,7 +53,7 @@ export async function waitForJob(jobId, maxAttempts = 12) {
       return result;
     }
     if (status === "failed") throw new Error("Job failed: " + jobId);
-    console.log(`[Job ${jobId}] attempt ${i+1} — status: ${status}`);
+    console.log(`[Job ${jobId}] attempt ${i + 1} — status: ${status}`);
   }
   throw new Error("Job timed out: " + jobId);
 }
