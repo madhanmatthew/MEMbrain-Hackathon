@@ -3,6 +3,7 @@ import GoalForm from '../components/GoalForm'
 import GoalCard from '../components/GoalCard'
 import EventLog from '../components/EventLog'
 import InsightPanel from '../components/InsightPanel'
+import Constellation from '../components/Constellation'
 
 export default function Dashboard() {
   const [goals, setGoals] = useState([
@@ -23,17 +24,27 @@ export default function Dashboard() {
       why: 'Margins are too thin, need to optimize vendor contracts',
       target: '2026-06-30',
       health: 0.35,
-      events: []
+      events: [
+        { id: 3, text: 'Negotiated vendor discount', date: '20 Mar', sentiment: 'positive' }
+      ]
     }
   ])
 
   const [selectedGoal, setSelectedGoal] = useState(goals[0])
   const [showForm, setShowForm] = useState(false)
 
+  // ✅ Add goal (fixed structure)
   const addGoal = (goal) => {
-    setGoals(prev => [...prev, goal])
+    const newGoal = {
+      ...goal,
+      id: Date.now(),
+      events: [],
+      health: 0.5
+    }
+
+    setGoals(prev => [...prev, newGoal])
+    setSelectedGoal(newGoal)
     setShowForm(false)
-    setSelectedGoal(goal)
   }
 
   const addEvent = (goalId, event) => {
@@ -42,9 +53,11 @@ export default function Dashboard() {
         ? { ...g, events: [...(g.events ?? []), event], health: Math.min(1, (g.health ?? 0.5) + 0.05) }
         : g
     ))
-    setSelectedGoal(prev => prev?.id === goalId
-      ? { ...prev, events: [...(prev.events ?? []), event], health: Math.min(1, (prev.health ?? 0.5) + 0.05) }
-      : prev
+
+    setSelectedGoal(prev =>
+      prev?.id === goalId
+        ? { ...prev, events: [...(prev.events ?? []), event] }
+        : prev
     )
   }
 
@@ -58,24 +71,30 @@ export default function Dashboard() {
       />
 
       <main style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
-        {showForm ? (
-          <div style={{ maxWidth: '520px' }}>
-            <button
-              onClick={() => setShowForm(false)}
-              style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', marginBottom: '16px', fontSize: '14px' }}
-            >
-              ← Back
-            </button>
-            <GoalForm onGoalCreated={addGoal} />
-          </div>
-        ) : selectedGoal ? (
-          <div style={{ maxWidth: '680px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--amber)' }}>{selectedGoal.name}</h1>
-              <p style={{ color: 'var(--muted)', marginTop: '6px', fontSize: '14px' }}>{selectedGoal.why}</p>
+        {selectedGoal ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+            {/* 🔥 Top Content */}
+            <div style={{ maxWidth: '700px' }}>
+              <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--amber)' }}>
+                {selectedGoal.name}
+              </h1>
+              <p style={{ color: 'var(--muted)', marginTop: '6px', fontSize: '14px' }}>
+                {selectedGoal.why}
+              </p>
+
+              <div style={{ marginTop: '20px' }}>
+                <EventLog goal={selectedGoal} onEventAdded={addEvent} />
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <InsightPanel goals={goals} />
+              </div>
             </div>
-            <EventLog goal={selectedGoal} onEventAdded={addEvent} />
-            <InsightPanel goals={goals} />
+
+            {/* 🌌 FULL WIDTH GRAPH */}
+            <Constellation goals={goals} />
+
           </div>
         ) : (
           <div style={{ textAlign: 'center', marginTop: '80px', color: 'var(--muted)' }}>
@@ -84,6 +103,44 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* 🔥 MODAL FORM */}
+      {showForm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1a1a22',
+            padding: '24px',
+            borderRadius: '12px',
+            width: '400px'
+          }}>
+            <button
+              onClick={() => setShowForm(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#aaa',
+                marginBottom: '10px',
+                cursor: 'pointer'
+              }}
+            >
+              ✕ Close
+            </button>
+
+            <GoalForm onGoalCreated={addGoal} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

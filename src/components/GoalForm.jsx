@@ -1,4 +1,4 @@
-
+import { useState } from 'react'
 import { storeMemory, waitForJob } from '../api/membrain'
 
 export default function GoalForm({ onGoalCreated }) {

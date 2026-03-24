@@ -7,24 +7,134 @@ export default function InsightPanel({ goals }) {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
 
+  // 🧠 SMART LOCAL INSIGHTS
+  const generateInsights = (query, goals) => {
+  const insights = []
+  const q = query.toLowerCase()
+
+  goals.forEach(goal => {
+    const events = goal.events || []
+
+    const negatives = events.filter(e =>
+      e.text.toLowerCase().includes("lost") ||
+      e.text.toLowerCase().includes("delay") ||
+      e.text.toLowerCase().includes("issue")
+    )
+
+    const positives = events.filter(e =>
+      e.text.toLowerCase().includes("closed") ||
+      e.text.toLowerCase().includes("growth") ||
+      e.text.toLowerCase().includes("increase") ||
+      e.text.toLowerCase().includes("viral")
+    )
+
+    // 🧠 BROADER "PROBLEM" DETECTION
+    if (
+      q.includes("off track") ||
+      q.includes("not growing") ||
+      q.includes("not increasing") ||
+      q.includes("problem") ||
+      q.includes("issue") ||
+      q.includes("why")
+    ) {
+      if (negatives.length > 0) {
+        insights.push({
+          goalName: goal.name,
+          insight: `Problems detected: ${negatives.map(e => e.text).join(", ")}`,
+          score: "High relevance"
+        })
+      }
+    }
+
+    // ⚠️ ATTENTION
+    if (
+      q.includes("attention") ||
+      q.includes("focus") ||
+      q.includes("improve")
+    ) {
+      if (events.length < 2) {
+        insights.push({
+          goalName: goal.name,
+          insight: "Low activity — this goal needs more focus",
+          score: "Priority"
+        })
+      }
+    }
+
+    // 📊 PATTERNS
+    if (
+      q.includes("pattern") ||
+      q.includes("trend") ||
+      q.includes("inconsistent")
+    ) {
+      if (positives.length && negatives.length) {
+        insights.push({
+          goalName: goal.name,
+          insight: "Mixed signals — inconsistent progress observed",
+          score: "Pattern found"
+        })
+      } else if (positives.length) {
+        insights.push({
+          goalName: goal.name,
+          insight: "Consistent positive momentum",
+          score: "Good trend"
+        })
+      }
+    }
+
+    // 🚀 PERFORMANCE (NEW — IMPORTANT)
+    if (
+      q.includes("performing") ||
+      q.includes("doing well") ||
+      q.includes("growth")
+    ) {
+      if (positives.length > 0) {
+        insights.push({
+          goalName: goal.name,
+          insight: `Positive drivers: ${positives.map(e => e.text).join(", ")}`,
+          score: "Strong"
+        })
+      }
+    }
+  })
+
+  return insights
+}
+
   const handleSearch = async () => {
     if (!query.trim()) return
+
     setLoading(true)
     setSearched(true)
+
     try {
-      const data = await searchMemories(query)
-      const memories = data.results ?? data.memories ?? []
-      const mapped = memories.slice(0, 3).map(m => ({
-        goalName: m.metadata?.name ?? m.metadata?.goalName ?? m.metadata?.type ?? 'Related memory',
-        insight: m.content ?? m.text ?? m.metadata?.why ?? 'No content available',
-        score: m.score ? (m.score * 100).toFixed(0) : null,
-        health: m.score ?? 0.7
-      }))
-      setResults(mapped)
+      // 🔥 FIRST: USE SMART LOCAL INSIGHTS
+      const localInsights = generateInsights(query, goals)
+
+      if (localInsights.length > 0) {
+        setResults(localInsights)
+      } else {
+        // 🔁 FALLBACK TO MEMBRAIN
+        const data = await searchMemories(query)
+        const memories = data.results ?? data.memories ?? []
+
+        const mapped = memories.slice(0, 3).map(m => ({
+          goalName: m.metadata?.name ?? 'Related memory',
+          insight: m.content ?? m.text ?? 'Insight from memory',
+          score: m.score ? (m.score * 100).toFixed(0) + '%' : null
+        }))
+
+        setResults(mapped)
+      }
+
     } catch (err) {
       console.error('Search failed:', err)
-      setResults([])
+
+      // 🔥 EVEN ON ERROR → USE LOCAL
+      const fallback = generateInsights(query, goals)
+      setResults(fallback)
     }
+
     setLoading(false)
   }
 
@@ -80,13 +190,13 @@ export default function InsightPanel({ goals }) {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)', fontSize: '13px' }}>
-          Searching Membrain memory...
+          Analyzing goal memory...
         </div>
       )}
 
       {!loading && searched && results.length === 0 && (
         <p style={{ color: 'var(--muted)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
-          No insights found. Try logging more events first.
+          No strong signals found — try adding more events.
         </p>
       )}
 
@@ -111,7 +221,7 @@ export default function InsightPanel({ goals }) {
                 borderRadius: '99px',
                 border: '1px solid var(--border)'
               }}>
-                {r.score}% match
+                {r.score}
               </span>
             )}
           </div>
@@ -123,7 +233,11 @@ export default function InsightPanel({ goals }) {
 
       {!searched && goals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {['Why is my top goal off track?', 'Which goal needs attention?', 'What patterns do you see?'].map(q => (
+          {[
+            'Why is my top goal off track?',
+            'Which goal needs attention?',
+            'What patterns do you see?'
+          ].map(q => (
             <button
               key={q}
               onClick={() => setQuery(q)}
