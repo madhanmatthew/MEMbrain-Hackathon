@@ -1,0 +1,102 @@
+import { useState } from 'react'
+
+export default function EventLog({ goal, onEventAdded }) {
+  const [text, setText] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleLog = async () => {
+    if (!text.trim()) return
+    setLoading(true)
+    await new Promise(r => setTimeout(r, 500))
+    onEventAdded(goal.id, {
+      id: Date.now(),
+      text,
+      date: new Date().toLocaleDateString(),
+      sentiment: text.length > 30 ? 'positive' : 'neutral'
+    })
+    setText('')
+    setLoading(false)
+  }
+
+  return (
+    <div style={{
+      background: 'var(--bg2)',
+      border: '1px solid var(--border)',
+      borderRadius: '16px',
+      padding: '24px',
+    }}>
+      <h3 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', marginBottom: '16px' }}>
+        Log an event
+        <span style={{ color: 'var(--muted)', fontWeight: '400', marginLeft: '8px', fontSize: '12px' }}>
+          for "{goal.name}"
+        </span>
+      </h3>
+
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <input
+          placeholder="What happened today? e.g. Closed a ₹50k deal"
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleLog()}
+          style={{
+            flex: 1,
+            background: 'var(--bg3)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            color: 'var(--text)',
+            fontSize: '14px',
+            outline: 'none',
+          }}
+        />
+        <button
+          onClick={handleLog}
+          disabled={loading || !text.trim()}
+          style={{
+            background: 'var(--teal)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 18px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {loading ? '...' : 'Log'}
+        </button>
+      </div>
+
+      <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {(goal.events ?? []).length === 0 && (
+          <p style={{ color: 'var(--muted)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
+            No events yet — log your first one above
+          </p>
+        )}
+        {[...(goal.events ?? [])].reverse().map(ev => (
+          <div key={ev.id} style={{
+            background: 'var(--bg3)',
+            borderRadius: '8px',
+            padding: '12px 14px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: ev.sentiment === 'positive' ? 'var(--teal)' : 'var(--muted)',
+                flexShrink: 0
+              }} />
+              <p style={{ fontSize: '13px', color: 'var(--text)' }}>{ev.text}</p>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{ev.date}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
