@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { searchMemories } from '../api/membrain'
 
-export default function InsightPanel({ goals }) {
+export default function InsightPanel({ goals, onHighlight }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -201,13 +201,17 @@ export default function InsightPanel({ goals }) {
       )}
 
       {!loading && results.map((r, i) => (
-        <div key={i} style={{
-          background: 'var(--bg3)',
-          borderRadius: '10px',
-          padding: '14px',
-          marginBottom: '10px',
-          borderLeft: '3px solid var(--purple)'
-        }}>
+  <div
+    key={i}
+    onClick={() => onHighlight(r.goalName)}   // 🔥 ADD THIS
+    style={{
+      cursor: 'pointer',                     // 🔥 ADD THIS
+      background: 'var(--bg3)',
+      borderRadius: '10px',
+      padding: '14px',
+      marginBottom: '10px',
+      borderLeft: '3px solid var(--purple)'
+    }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
             <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>
               {r.goalName}
