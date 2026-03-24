@@ -4,9 +4,9 @@ import { storeMemory } from "./api/membrain";
 function App() {
   useEffect(() => {
     storeMemory({
-      type: "goal",
       content: "Increase monthly profit",
       metadata: {
+        type: "goal",
         reasoning: "To grow business",
       },
     }).then((res) => {
