@@ -11,7 +11,7 @@ export default function Constellation({ goals, highlightText }) {
     const width = 800
     const height = 500
 
-    // 🌌 Container for zoom
+    // 🌌 Container
     const container = svg.append("g")
 
     // 🔍 Zoom + Pan
@@ -23,7 +23,7 @@ export default function Constellation({ goals, highlightText }) {
 
     svg.call(zoom)
 
-    // 🧠 Build nodes + links
+    // 🧠 Nodes + Links
     const nodes = []
     const links = []
 
@@ -50,7 +50,7 @@ export default function Constellation({ goals, highlightText }) {
       })
     })
 
-    // ✨ Glow effect
+    // ✨ Glow
     const defs = svg.append("defs")
 
     const glow = defs.append("filter").attr("id", "glow")
@@ -68,12 +68,17 @@ export default function Constellation({ goals, highlightText }) {
       d.y = height / 2 + (Math.random() - 0.5) * 300
     })
 
-    // ⚡ Simulation
+    // ⚡ Simulation (SMOOTH MOTION FIX)
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id).distance(160))
-      .force("charge", d3.forceManyBody().strength(-300))
+      .force("charge", d3.forceManyBody().strength(-120)) // smoother
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collision", d3.forceCollide().radius(30))
+      .force("x", d3.forceX(width / 2).strength(0.02)) // subtle pull
+      .force("y", d3.forceY(height / 2).strength(0.02))
+
+    simulation.alphaDecay(0.02) // keeps it alive
+    simulation.alpha(1).restart()
 
     // 🔗 Links
     const link = container.append("g")
@@ -91,29 +96,35 @@ export default function Constellation({ goals, highlightText }) {
       .enter()
       .append("circle")
       .attr("r", d => {
-      if (highlightText && d.label.toLowerCase().includes(highlightText.toLowerCase())) {
-        return d.type === "goal" ? 22 : 12
-  }
-  return d.type === "goal" ? 18 : 8
-})
-.attr("fill", d => d.type === "goal" ? "#EF9F27" : "#1D9E75")
-.attr("stroke", d => {
-  if (!highlightText) return d.type === "goal" ? "#fff" : "none"
+        if (highlightText && d.label.toLowerCase().includes(highlightText.toLowerCase())) {
+          return d.type === "goal" ? 22 : 12
+        }
+        return d.type === "goal" ? 18 : 8
+      })
+      .attr("fill", d => d.type === "goal" ? "#EF9F27" : "#1D9E75")
+      .attr("stroke", d => {
+        if (!highlightText) return d.type === "goal" ? "#fff" : "none"
 
-  return d.label.toLowerCase().includes(highlightText.toLowerCase())
-    ? "#ff4d4d"
-    : (d.type === "goal" ? "#fff" : "none")
-})
-.attr("stroke-width", d => {
-  if (!highlightText) return d.type === "goal" ? 2 : 0
+        return d.label.toLowerCase().includes(highlightText.toLowerCase())
+          ? "#ff4d4d"
+          : (d.type === "goal" ? "#fff" : "none")
+      })
+      .attr("stroke-width", d => {
+        if (!highlightText) return d.type === "goal" ? 2 : 0
 
-  return d.label.toLowerCase().includes(highlightText.toLowerCase())
-    ? 4
-    : (d.type === "goal" ? 2 : 0)
-})
-      
+        return d.label.toLowerCase().includes(highlightText.toLowerCase())
+          ? 4
+          : (d.type === "goal" ? 2 : 0)
+      })
+      .attr("filter", "url(#glow)")
+      .style("cursor", "pointer")
+      .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended)
+      )
 
-    // 📝 Labels (only goals)
+    // 📝 Goal Labels only
     const text = container.append("g")
       .selectAll("text")
       .data(nodes)
@@ -123,7 +134,7 @@ export default function Constellation({ goals, highlightText }) {
       .attr("fill", "#fff")
       .attr("font-size", "11px")
 
-    // 🟢 TOOLTIP (NEW)
+    // 🟢 Tooltip
     const tooltip = d3.select("body")
       .append("div")
       .style("position", "absolute")
@@ -135,7 +146,7 @@ export default function Constellation({ goals, highlightText }) {
       .style("pointer-events", "none")
       .style("opacity", 0)
 
-    // 🔥 Hover interaction + tooltip
+    // 🔥 Hover + tooltip
     node.on("mouseover", function (event, d) {
       node.attr("opacity", n => n.id === d.id ? 1 : 0.2)
 
@@ -143,7 +154,6 @@ export default function Constellation({ goals, highlightText }) {
         l.source.id === d.id || l.target.id === d.id ? 1 : 0.1
       )
 
-      // show tooltip ONLY for events
       if (d.type === "event") {
         tooltip
           .style("opacity", 1)
@@ -171,7 +181,7 @@ export default function Constellation({ goals, highlightText }) {
       )
     })
 
-    // 🔄 Tick update (WITH BOUNDARY FIX)
+    // 🔄 Tick
     simulation.on("tick", () => {
       link
         .attr("x1", d => d.source.x)
@@ -187,8 +197,6 @@ export default function Constellation({ goals, highlightText }) {
         .attr("x", d => d.x + 12)
         .attr("y", d => d.y + 4)
     })
-
-    simulation.alpha(1).restart()
 
     // 🔁 Reset zoom
     svg.on("dblclick", () => {
@@ -213,7 +221,7 @@ export default function Constellation({ goals, highlightText }) {
       d.fy = null
     }
 
-  }, [goals])
+  }, [goals, highlightText])
 
   return (
     <div style={{ marginTop: '20px' }}>
