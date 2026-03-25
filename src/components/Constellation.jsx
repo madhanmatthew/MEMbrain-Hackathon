@@ -11,10 +11,8 @@ export default function Constellation({ goals, highlightText }) {
     const width = 800
     const height = 500
 
-    // 🌌 Container
     const container = svg.append("g")
 
-    // 🔍 Zoom + Pan
     const zoom = d3.zoom()
       .scaleExtent([0.5, 3])
       .on("zoom", (event) => {
@@ -23,7 +21,6 @@ export default function Constellation({ goals, highlightText }) {
 
     svg.call(zoom)
 
-    // 🧠 Nodes + Links
     const nodes = []
     const links = []
 
@@ -50,7 +47,6 @@ export default function Constellation({ goals, highlightText }) {
       })
     })
 
-    // ✨ Glow
     const defs = svg.append("defs")
 
     const glow = defs.append("filter").attr("id", "glow")
@@ -62,25 +58,22 @@ export default function Constellation({ goals, highlightText }) {
     merge.append("feMergeNode").attr("in", "coloredBlur")
     merge.append("feMergeNode").attr("in", "SourceGraphic")
 
-    // 🌠 Initial positions
     nodes.forEach(d => {
       d.x = width / 2 + (Math.random() - 0.5) * 300
       d.y = height / 2 + (Math.random() - 0.5) * 300
     })
 
-    // ⚡ Simulation (SMOOTH MOTION FIX)
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id).distance(160))
-      .force("charge", d3.forceManyBody().strength(-120)) // smoother
+      .force("charge", d3.forceManyBody().strength(-120))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collision", d3.forceCollide().radius(30))
-      .force("x", d3.forceX(width / 2).strength(0.02)) // subtle pull
+      .force("x", d3.forceX(width / 2).strength(0.02))
       .force("y", d3.forceY(height / 2).strength(0.02))
 
-    simulation.alphaDecay(0.02) // keeps it alive
+    simulation.alphaDecay(0.02)
     simulation.alpha(1).restart()
 
-    // 🔗 Links
     const link = container.append("g")
       .selectAll("line")
       .data(links)
@@ -89,7 +82,6 @@ export default function Constellation({ goals, highlightText }) {
       .attr("stroke", "#444")
       .attr("stroke-width", 1.2)
 
-    // 🌟 Nodes
     const node = container.append("g")
       .selectAll("circle")
       .data(nodes)
@@ -104,14 +96,12 @@ export default function Constellation({ goals, highlightText }) {
       .attr("fill", d => d.type === "goal" ? "#EF9F27" : "#1D9E75")
       .attr("stroke", d => {
         if (!highlightText) return d.type === "goal" ? "#fff" : "none"
-
         return d.label.toLowerCase().includes(highlightText.toLowerCase())
           ? "#ff4d4d"
           : (d.type === "goal" ? "#fff" : "none")
       })
       .attr("stroke-width", d => {
         if (!highlightText) return d.type === "goal" ? 2 : 0
-
         return d.label.toLowerCase().includes(highlightText.toLowerCase())
           ? 4
           : (d.type === "goal" ? 2 : 0)
@@ -124,7 +114,6 @@ export default function Constellation({ goals, highlightText }) {
         .on("end", dragended)
       )
 
-    // 📝 Goal Labels only
     const text = container.append("g")
       .selectAll("text")
       .data(nodes)
@@ -134,19 +123,22 @@ export default function Constellation({ goals, highlightText }) {
       .attr("fill", "#fff")
       .attr("font-size", "11px")
 
-    // 🟢 Tooltip
+    // 🟢 Tooltip — fixed position, always on top
     const tooltip = d3.select("body")
       .append("div")
-      .style("position", "absolute")
-      .style("background", "#111")
+      .style("position", "fixed")
+      .style("z-index", "99999")
+      .style("background", "rgba(15,15,25,0.95)")
       .style("color", "#fff")
-      .style("padding", "6px 10px")
-      .style("border-radius", "6px")
+      .style("padding", "8px 12px")
+      .style("border-radius", "8px")
       .style("font-size", "12px")
+      .style("border", "1px solid rgba(255,255,255,0.12)")
       .style("pointer-events", "none")
       .style("opacity", 0)
+      .style("max-width", "220px")
+      .style("line-height", "1.4")
 
-    // 🔥 Hover + tooltip
     node.on("mouseover", function (event, d) {
       node.attr("opacity", n => n.id === d.id ? 1 : 0.2)
 
@@ -158,8 +150,16 @@ export default function Constellation({ goals, highlightText }) {
         tooltip
           .style("opacity", 1)
           .html(d.label)
-          .style("left", event.pageX + 10 + "px")
-          .style("top", event.pageY - 20 + "px")
+          .style("left", event.clientX + 14 + "px")
+          .style("top", event.clientY - 28 + "px")
+      }
+    })
+
+    node.on("mousemove", function (event, d) {
+      if (d.type === "event") {
+        tooltip
+          .style("left", event.clientX + 14 + "px")
+          .style("top", event.clientY - 28 + "px")
       }
     })
 
@@ -169,7 +169,6 @@ export default function Constellation({ goals, highlightText }) {
       tooltip.style("opacity", 0)
     })
 
-    // 🎯 Click focus
     node.on("click", (event, d) => {
       const scale = 1.5
       const x = width / 2 - d.x * scale
@@ -181,7 +180,6 @@ export default function Constellation({ goals, highlightText }) {
       )
     })
 
-    // 🔄 Tick
     simulation.on("tick", () => {
       link
         .attr("x1", d => d.source.x)
@@ -198,12 +196,10 @@ export default function Constellation({ goals, highlightText }) {
         .attr("y", d => d.y + 4)
     })
 
-    // 🔁 Reset zoom
     svg.on("dblclick", () => {
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity)
     })
 
-    // 🖱️ Drag
     function dragstarted(event, d) {
       if (!event.active) simulation.alphaTarget(0.3).restart()
       d.fx = d.x
@@ -219,6 +215,12 @@ export default function Constellation({ goals, highlightText }) {
       if (!event.active) simulation.alphaTarget(0)
       d.fx = null
       d.fy = null
+    }
+
+    // Cleanup on unmount
+    return () => {
+      tooltip.remove()
+      simulation.stop()
     }
 
   }, [goals, highlightText])

@@ -47,11 +47,11 @@ export default function EventLog({ goal, onEventAdded }) {
     })
     if (res.job_id) await waitForJob(res.job_id)
     onEventAdded(goal.id, {
-      id: res.memory_id ?? Date.now(),
-      text,
-      date: new Date().toLocaleDateString(),
-      sentiment: 'positive'
-    })
+  id: res.memory_id ?? Date.now(),
+  text,
+  date: new Date().toLocaleDateString(),
+  sentiment: getEventType(text)   // ← use the actual detector
+})
     setText('')
   } catch (err) {
     console.error('Failed to log event:', err)

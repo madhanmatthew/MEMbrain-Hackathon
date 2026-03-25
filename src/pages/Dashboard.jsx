@@ -33,63 +33,120 @@ function FloatingPaths({ position }) {
   )
 }
 
+// ✅ Health calculation algorithm
+const calcHealth = (events) => {
+  if (!events || events.length === 0) return 0.5
+
+  const total = events.length
+  let weightedScore = 0
+  let totalWeight = 0
+
+  events.forEach((e, index) => {
+    // Newer events (higher index) get more weight
+    const weight = 0.5 + (index / (total - 1 || 1)) * 1.0
+    const value = e.sentiment === 'positive' ? 1 : e.sentiment === 'negative' ? 0 : 0.5
+    weightedScore += value * weight
+    totalWeight += weight
+  })
+
+  const score = weightedScore / totalWeight
+  return Math.round(score * 100) / 100
+}
+
 export default function Dashboard() {
   const [highlightText, setHighlightText] = useState('')
   const [view, setView] = useState('constellation')
   const [showForm, setShowForm] = useState(false)
-  const [goals, setGoals] = useState([
-    {
-      id: 1,
-      name: 'Hit ₹10L revenue by Q3',
-      why: 'Scale team and operations',
-      target: '2026-09-30',
-      health: 0.75,
-      events: [
-        { id: 1, text: 'Closed ₹50k deal', date: '20 Mar', sentiment: 'positive' },
-        { id: 2, text: 'Lost ₹30k prospect', date: '18 Mar', sentiment: 'negative' },
-      ]
-    },
-    {
-      id: 2,
-      name: 'Reach 50k monthly visitors',
-      why: 'Increase conversions and brand reach',
-      target: '2026-08-31',
-      health: 0.5,
-      events: [
-        { id: 3, text: 'Launched ad campaign', date: '15 Mar', sentiment: 'positive' },
-        { id: 4, text: 'SEO issues detected', date: '12 Mar', sentiment: 'negative' },
-      ]
-    }
-  ])
-  const [selectedGoal, setSelectedGoal] = useState(goals[0])
+
+  const [goals, setGoals] = useState(() => {
+    const raw = [
+      {
+        id: 1,
+        name: 'Hit ₹10L revenue by Q3',
+        why: 'Scale team and operations',
+        target: '2026-09-30',
+        events: [
+          { id: 1, text: 'Closed ₹50k deal with Acme Corp', date: '1 Mar', sentiment: 'positive' },
+          { id: 2, text: 'Lost ₹30k prospect to competitor', date: '5 Mar', sentiment: 'negative' },
+          { id: 3, text: 'Signed 3 new retainer clients', date: '9 Mar', sentiment: 'positive' },
+          { id: 4, text: 'Key sales rep resigned suddenly', date: '12 Mar', sentiment: 'negative' },
+          { id: 5, text: 'Closed biggest deal of the year', date: '16 Mar', sentiment: 'positive' },
+          { id: 6, text: 'Payment delayed by major client', date: '19 Mar', sentiment: 'negative' },
+          { id: 7, text: 'Upsold existing client by ₹20k', date: '22 Mar', sentiment: 'positive' },
+          { id: 8, text: 'Launched new pricing tier successfully', date: '25 Mar', sentiment: 'positive' },
+        ]
+      },
+      {
+        id: 2,
+        name: 'Reach 50k monthly visitors',
+        why: 'Increase conversions and brand reach',
+        target: '2026-08-31',
+        events: [
+          { id: 9,  text: 'Launched Google Ads campaign', date: '2 Mar', sentiment: 'positive' },
+          { id: 10, text: 'SEO audit found 40 broken links', date: '6 Mar', sentiment: 'negative' },
+          { id: 11, text: 'Blog post went viral on LinkedIn', date: '10 Mar', sentiment: 'positive' },
+          { id: 12, text: 'Ad budget cut by 30%', date: '13 Mar', sentiment: 'negative' },
+          { id: 13, text: 'Partnered with popular newsletter', date: '17 Mar', sentiment: 'positive' },
+          { id: 14, text: 'Website went down for 6 hours', date: '20 Mar', sentiment: 'negative' },
+          { id: 15, text: 'Fixed SEO issues, traffic up 18%', date: '23 Mar', sentiment: 'positive' },
+          { id: 16, text: 'Negative press mention on Twitter', date: '25 Mar', sentiment: 'negative' },
+        ]
+      }
+    ]
+    // Calculate health from events on init
+    return raw.map(g => ({ ...g, health: calcHealth(g.events) }))
+  })
+
+  const [selectedGoal, setSelectedGoal] = useState(() => goals[0])
 
   const addGoal = (goal) => {
-    const newGoal = { ...goal, id: Date.now(), events: [], health: 0.5 }
+    const newGoal = {
+      ...goal,
+      id: Date.now(),
+      events: [],
+      health: 0.5
+    }
     setGoals(prev => [...prev, newGoal])
     setSelectedGoal(newGoal)
     setShowForm(false)
   }
 
   const addEvent = (goalId, event) => {
-    setGoals(prev => prev.map(g =>
-      g.id === goalId ? { ...g, events: [...(g.events ?? []), event] } : g
-    ))
-    setSelectedGoal(prev =>
-      prev?.id === goalId ? { ...prev, events: [...(prev.events ?? []), event] } : prev
-    )
+    setGoals(prev => prev.map(g => {
+      if (g.id !== goalId) return g
+      const updatedEvents = [...(g.events ?? []), event]
+      return { ...g, events: updatedEvents, health: calcHealth(updatedEvents) }
+    }))
+    setSelectedGoal(prev => {
+      if (prev?.id !== goalId) return prev
+      const updatedEvents = [...(prev.events ?? []), event]
+      return { ...prev, events: updatedEvents, health: calcHealth(updatedEvents) }
+    })
   }
 
-  const healthAvg = goals.length ? (goals.reduce((s, g) => s + g.health, 0) / goals.length * 100).toFixed(0) : 0
+  const healthAvg = goals.length
+    ? Math.round(goals.reduce((s, g) => s + g.health, 0) / goals.length * 100)
+    : 0
   const totalEvents = goals.reduce((s, g) => s + (g.events?.length ?? 0), 0)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080810', color: '#f0f0f0', position: 'relative', overflow: 'hidden', display: 'flex' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: '#080810',
+      color: '#f0f0f0',
+      position: 'relative',
+      overflow: 'hidden',
+      display: 'flex'
+    }}>
 
       {/* Animated background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
         <FloatingPaths position={1} />
         <FloatingPaths position={-1} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 20% 50%, rgba(239,159,39,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(127,119,221,0.04) 0%, transparent 60%)' }} />
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at 20% 50%, rgba(239,159,39,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(127,119,221,0.04) 0%, transparent 60%)'
+        }} />
       </div>
 
       {/* SIDEBAR */}
@@ -98,18 +155,28 @@ export default function Dashboard() {
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
         style={{
-          width: '280px', flexShrink: 0,
+          width: '280px',
+          flexShrink: 0,
           background: 'rgba(15,15,25,0.85)',
           backdropFilter: 'blur(20px)',
           borderRight: '1px solid rgba(255,255,255,0.06)',
           padding: '24px 16px',
-          display: 'flex', flexDirection: 'column', gap: '8px',
-          position: 'relative', zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          position: 'relative',
+          zIndex: 10,
           overflowY: 'auto'
         }}
       >
         {/* Logo */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 4px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          padding: '0 4px'
+        }}>
           <div>
             <motion.h1
               initial={{ opacity: 0 }}
@@ -119,37 +186,59 @@ export default function Dashboard() {
             >
               GoalPulse
             </motion.h1>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>powered by Membrain</p>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
+              powered by Membrain
+            </p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowForm(true)}
             style={{
-              background: '#EF9F27', color: '#000',
-              border: 'none', borderRadius: '8px',
-              padding: '7px 13px', fontSize: '12px',
-              fontWeight: '700', cursor: 'pointer'
+              background: '#EF9F27',
+              color: '#000',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '7px 13px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer'
             }}
           >
             + New
           </motion.button>
         </div>
 
-        {/* Stats row */}
+        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
           {[
             { label: 'Avg health', value: `${healthAvg}%` },
             { label: 'Total events', value: totalEvents },
           ].map(s => (
-            <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</p>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#EF9F27', marginTop: '2px' }}>{s.value}</p>
+            <div key={s.label} style={{
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: '10px',
+              padding: '10px 12px',
+              border: '1px solid rgba(255,255,255,0.06)'
+            }}>
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {s.label}
+              </p>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#EF9F27', marginTop: '2px' }}>
+                {s.value}
+              </p>
             </div>
           ))}
         </div>
 
-        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 4px', marginBottom: '4px' }}>
+        <p style={{
+          fontSize: '10px',
+          color: 'rgba(255,255,255,0.3)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          padding: '0 4px',
+          marginBottom: '4px'
+        }}>
           Your goals
         </p>
 
@@ -161,16 +250,26 @@ export default function Dashboard() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <GoalCard goal={g} selected={selectedGoal?.id === g.id} onSelect={setSelectedGoal} />
+              <GoalCard
+                goal={g}
+                selected={selectedGoal?.id === g.id}
+                onSelect={setSelectedGoal}
+              />
             </motion.div>
           ))}
         </AnimatePresence>
       </motion.aside>
 
-      {/* MAIN CONTENT */}
-      <main style={{ flex: 1, padding: '32px', overflowY: 'auto', position: 'relative', zIndex: 10 }}>
+      {/* MAIN */}
+      <main style={{
+        flex: 1,
+        padding: '32px',
+        overflowY: 'auto',
+        position: 'relative',
+        zIndex: 10
+      }}>
         <AnimatePresence mode="wait">
-          {selectedGoal && (
+          {selectedGoal ? (
             <motion.div
               key={selectedGoal.id}
               initial={{ opacity: 0, y: 24 }}
@@ -179,19 +278,25 @@ export default function Dashboard() {
               transition={{ duration: 0.35 }}
               style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '20px' }}
             >
-
               {/* Header */}
               <div style={{ marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                   <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
+                    animate={{ scale: [1, 1.3, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                     style={{
                       width: '10px', height: '10px', borderRadius: '50%',
-                      background: selectedGoal.health > 0.6 ? '#1D9E75' : selectedGoal.health > 0.3 ? '#EF9F27' : '#D85A30'
+                      background: selectedGoal.health > 0.6 ? '#1D9E75'
+                        : selectedGoal.health > 0.3 ? '#EF9F27' : '#D85A30',
+                      flexShrink: 0
                     }}
                   />
-                  <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#EF9F27', letterSpacing: '-0.5px' }}>
+                  <h1 style={{
+                    fontSize: '26px',
+                    fontWeight: '800',
+                    color: '#EF9F27',
+                    letterSpacing: '-0.5px'
+                  }}>
                     {selectedGoal.name}
                   </h1>
                 </div>
@@ -202,20 +307,81 @@ export default function Dashboard() {
                 {/* Health bar */}
                 <div style={{ marginTop: '16px', paddingLeft: '22px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Goal health</span>
-                    <span style={{ fontSize: '11px', color: '#EF9F27', fontWeight: '700' }}>{Math.round(selectedGoal.health * 100)}%</span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: 'rgba(255,255,255,0.3)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Goal health
+                    </span>
+                    <motion.span
+                      key={selectedGoal.health}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{ fontSize: '11px', color: '#EF9F27', fontWeight: '700' }}
+                    >
+                      {Math.round(selectedGoal.health * 100)}%
+                    </motion.span>
                   </div>
-                  <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '4px',
+                    background: 'rgba(255,255,255,0.08)',
+                    borderRadius: '2px',
+                    overflow: 'hidden'
+                  }}>
                     <motion.div
+                      key={selectedGoal.health}
                       initial={{ width: 0 }}
                       animate={{ width: `${selectedGoal.health * 100}%` }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
                       style={{
                         height: '100%',
-                        background: selectedGoal.health > 0.6 ? '#1D9E75' : selectedGoal.health > 0.3 ? '#EF9F27' : '#D85A30',
+                        background: selectedGoal.health > 0.6 ? '#1D9E75'
+                          : selectedGoal.health > 0.3 ? '#EF9F27' : '#D85A30',
                         borderRadius: '2px'
                       }}
                     />
+                  </div>
+
+                  {/* Health breakdown */}
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
+                    {[
+                      {
+                        label: 'Positive',
+                        count: selectedGoal.events?.filter(e => e.sentiment === 'positive').length ?? 0,
+                        color: '#1D9E75'
+                      },
+                      {
+                        label: 'Negative',
+                        count: selectedGoal.events?.filter(e => e.sentiment === 'negative').length ?? 0,
+                        color: '#D85A30'
+                      },
+                      {
+                        label: 'Total events',
+                        count: selectedGoal.events?.length ?? 0,
+                        color: '#EF9F27'
+                      },
+                    ].map(stat => (
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: '6px', height: '6px',
+                          borderRadius: '50%',
+                          background: stat.color
+                        }} />
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                          {stat.label}:
+                        </span>
+                        <motion.span
+                          key={stat.count}
+                          initial={{ scale: 1.3, color: stat.color }}
+                          animate={{ scale: 1 }}
+                          style={{ fontSize: '12px', fontWeight: '700', color: stat.color }}
+                        >
+                          {stat.count}
+                        </motion.span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -249,10 +415,10 @@ export default function Dashboard() {
                   border: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
-                <InsightPanel goals={goals} onHighlight={setHighlightText} />
+                <InsightPanel goals={[selectedGoal]} onHighlight={setHighlightText} />
               </motion.div>
 
-              {/* View toggle */}
+              {/* View Toggle */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 {[
                   { key: 'constellation', label: '🌌 Graph' },
@@ -280,7 +446,7 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* Graph area */}
+              {/* Graph Area */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -311,13 +477,18 @@ export default function Dashboard() {
               </motion.div>
 
             </motion.div>
-          )}
-
-          {!selectedGoal && (
+          ) : (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '16px' }}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '60vh',
+                gap: '16px'
+              }}
             >
               <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
@@ -326,16 +497,23 @@ export default function Dashboard() {
               >
                 🎯
               </motion.div>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '16px' }}>Select a goal or create a new one</p>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '16px' }}>
+                Select a goal or create a new one
+              </p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowForm(true)}
                 style={{
-                  background: '#EF9F27', color: '#000',
-                  border: 'none', borderRadius: '10px',
-                  padding: '12px 24px', fontSize: '14px',
-                  fontWeight: '700', cursor: 'pointer', marginTop: '8px'
+                  background: '#EF9F27',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  marginTop: '8px'
                 }}
               >
                 + Create your first goal
@@ -353,10 +531,13 @@ export default function Dashboard() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             style={{
-              position: 'fixed', inset: 0,
+              position: 'fixed',
+              inset: 0,
               background: 'rgba(0,0,0,0.75)',
               backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               zIndex: 100
             }}
             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
@@ -375,11 +556,25 @@ export default function Dashboard() {
                 boxShadow: '0 40px 80px rgba(0,0,0,0.6)'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ color: '#EF9F27', fontSize: '16px', fontWeight: '700' }}>Create new goal</h2>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <h2 style={{ color: '#EF9F27', fontSize: '16px', fontWeight: '700' }}>
+                  Create new goal
+                </h2>
                 <button
                   onClick={() => setShowForm(false)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '20px', cursor: 'pointer', lineHeight: 1 }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    lineHeight: 1
+                  }}
                 >
                   ×
                 </button>
