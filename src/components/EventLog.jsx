@@ -1,5 +1,33 @@
 import { useState } from 'react'
 import { storeMemory, waitForJob } from '../api/membrain'
+function getEventType(text) {
+  const t = text.toLowerCase()
+
+  if (
+    t.includes("lost") ||
+    t.includes("delay") ||
+    t.includes("drop") ||
+    t.includes("spike") ||
+    t.includes("cost") ||
+    t.includes("issue")
+  ) {
+    return "negative"
+  }
+
+  if (
+    t.includes("closed") ||
+    t.includes("growth") ||
+    t.includes("increase") ||
+    t.includes("reduced") ||
+    t.includes("saved") ||
+    t.includes("negotiated") ||
+    t.includes("referral")
+  ) {
+    return "positive"
+  }
+
+  return "neutral"
+}
 export default function EventLog({ goal, onEventAdded }) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
