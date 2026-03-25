@@ -1,105 +1,160 @@
 import { useState } from 'react'
 import { searchMemories } from '../api/membrain'
 
+// 🧠 NEW: FINAL INSIGHT BUILDER (SAFE)
+function buildFinalInsight({ problems = [], positives = [], patterns = [] }) {
+  let mainReason = ""
+  let supportingReason = ""
+
+  if (problems.length > 0) {
+    mainReason = `due to recent setbacks such as ${problems[0]}`
+  } else if (patterns.length > 0) {
+    mainReason = `due to inconsistent performance`
+  } else if (positives.length > 0) {
+    mainReason = `with generally positive progress`
+  } else {
+    mainReason = `due to limited activity`
+  }
+
+  if (patterns.length > 0) {
+    supportingReason = `inconsistent signals across events`
+  } else if (positives.length > 0 && problems.length > 0) {
+    supportingReason = `both positive and negative signals`
+  } else if (positives.length > 0) {
+    supportingReason = `some positive momentum`
+  } else {
+    supportingReason = `low activity levels`
+  }
+
+  return `Your goal appears to be affected ${mainReason}, with ${supportingReason}. This is likely causing the observed inconsistency.`
+}
+
 export default function InsightPanel({ goals, onHighlight }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
 
-  // 🧠 SMART LOCAL INSIGHTS
+  // 🧠 UPDATED: SMART INSIGHTS WITH FINAL INSIGHT
   const generateInsights = (query, goals) => {
-  const insights = []
-  const q = query.toLowerCase()
+    const insights = []
+    const q = query.toLowerCase()
 
-  goals.forEach(goal => {
-    const events = goal.events || []
+    goals.forEach(goal => {
+      const events = goal.events || []
 
-    const negatives = events.filter(e =>
-      e.text.toLowerCase().includes("lost") ||
-      e.text.toLowerCase().includes("delay") ||
-      e.text.toLowerCase().includes("issue")
-    )
+      const problems = []
+      const positives = []
+      const patterns = []
 
-    const positives = events.filter(e =>
-      e.text.toLowerCase().includes("closed") ||
-      e.text.toLowerCase().includes("growth") ||
-      e.text.toLowerCase().includes("increase") ||
-      e.text.toLowerCase().includes("viral")
-    )
+      const negatives = events.filter(e =>
+        e.text.toLowerCase().includes("lost") ||
+        e.text.toLowerCase().includes("delay") ||
+        e.text.toLowerCase().includes("issue")
+      )
 
-    // 🧠 BROADER "PROBLEM" DETECTION
-    if (
-      q.includes("off track") ||
-      q.includes("not growing") ||
-      q.includes("not increasing") ||
-      q.includes("problem") ||
-      q.includes("issue") ||
-      q.includes("why")
-    ) {
-      if (negatives.length > 0) {
+      const positiveEvents = events.filter(e =>
+        e.text.toLowerCase().includes("closed") ||
+        e.text.toLowerCase().includes("growth") ||
+        e.text.toLowerCase().includes("increase") ||
+        e.text.toLowerCase().includes("viral")
+      )
+
+      // PROBLEMS
+      if (
+        q.includes("off track") ||
+        q.includes("not growing") ||
+        q.includes("problem") ||
+        q.includes("issue") ||
+        q.includes("why")
+      ) {
+        if (negatives.length > 0) {
+          problems.push(...negatives.map(e => e.text))
+
+          insights.push({
+            goalName: goal.name,
+            insight: `Problems detected: ${problems.join(", ")}`,
+            score: "High relevance"
+          })
+        }
+      }
+
+      // ATTENTION
+      if (
+        q.includes("attention") ||
+        q.includes("focus") ||
+        q.includes("improve")
+      ) {
+        if (events.length < 2) {
+          insights.push({
+            goalName: goal.name,
+            insight: "Low activity — this goal needs more focus",
+            score: "Priority"
+          })
+        }
+      }
+
+      // PATTERNS
+      if (
+        q.includes("pattern") ||
+        q.includes("trend") ||
+        q.includes("inconsistent") ||
+        q.includes("why")
+      ) {
+        if (positiveEvents.length && negatives.length) {
+          patterns.push("mixed signals")
+
+          insights.push({
+            goalName: goal.name,
+            insight: "Mixed signals — inconsistent progress observed",
+            score: "Pattern found"
+          })
+        } else if (positiveEvents.length) {
+          positives.push(...positiveEvents.map(e => e.text))
+
+          insights.push({
+            goalName: goal.name,
+            insight: "Consistent positive momentum",
+            score: "Good trend"
+          })
+        }
+      }
+
+      // PERFORMANCE
+      if (
+        q.includes("performing") ||
+        q.includes("growth")
+      ) {
+        if (positiveEvents.length > 0) {
+          positives.push(...positiveEvents.map(e => e.text))
+
+          insights.push({
+            goalName: goal.name,
+            insight: `Positive drivers: ${positives.join(", ")}`,
+            score: "Strong"
+          })
+        }
+      }
+
+      // 🔥 NEW: FINAL INSIGHT (ONLY IF DATA EXISTS)
+      if (problems.length || positives.length || patterns.length) {
+        const finalInsight = buildFinalInsight({
+          problems,
+          positives,
+          patterns
+        })
+
         insights.push({
           goalName: goal.name,
-          insight: `Problems detected: ${negatives.map(e => e.text).join(", ")}`,
-          score: "High relevance"
+          insight: finalInsight,
+          score: "Final Insight",
+          isFinal: true
         })
       }
-    }
+    })
 
-    // ⚠️ ATTENTION
-    if (
-      q.includes("attention") ||
-      q.includes("focus") ||
-      q.includes("improve")
-    ) {
-      if (events.length < 2) {
-        insights.push({
-          goalName: goal.name,
-          insight: "Low activity — this goal needs more focus",
-          score: "Priority"
-        })
-      }
-    }
-
-    // 📊 PATTERNS
-    if (
-      q.includes("pattern") ||
-      q.includes("trend") ||
-      q.includes("inconsistent")
-    ) {
-      if (positives.length && negatives.length) {
-        insights.push({
-          goalName: goal.name,
-          insight: "Mixed signals — inconsistent progress observed",
-          score: "Pattern found"
-        })
-      } else if (positives.length) {
-        insights.push({
-          goalName: goal.name,
-          insight: "Consistent positive momentum",
-          score: "Good trend"
-        })
-      }
-    }
-
-    // 🚀 PERFORMANCE (NEW — IMPORTANT)
-    if (
-      q.includes("performing") ||
-      q.includes("doing well") ||
-      q.includes("growth")
-    ) {
-      if (positives.length > 0) {
-        insights.push({
-          goalName: goal.name,
-          insight: `Positive drivers: ${positives.map(e => e.text).join(", ")}`,
-          score: "Strong"
-        })
-      }
-    }
-  })
-
-  return insights
-}
+    return insights
+  }
 
   const handleSearch = async () => {
     if (!query.trim()) return
@@ -108,13 +163,11 @@ export default function InsightPanel({ goals, onHighlight }) {
     setSearched(true)
 
     try {
-      // 🔥 FIRST: USE SMART LOCAL INSIGHTS
       const localInsights = generateInsights(query, goals)
 
       if (localInsights.length > 0) {
         setResults(localInsights)
       } else {
-        // 🔁 FALLBACK TO MEMBRAIN
         const data = await searchMemories(query)
         const memories = data.results ?? data.memories ?? []
 
@@ -129,8 +182,6 @@ export default function InsightPanel({ goals, onHighlight }) {
 
     } catch (err) {
       console.error('Search failed:', err)
-
-      // 🔥 EVEN ON ERROR → USE LOCAL
       const fallback = generateInsights(query, goals)
       setResults(fallback)
     }
@@ -148,9 +199,6 @@ export default function InsightPanel({ goals, onHighlight }) {
       <h3 style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
         Ask your goals
       </h3>
-      <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
-        Powered by Membrain semantic search
-      </p>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <input
@@ -165,102 +213,40 @@ export default function InsightPanel({ goals, onHighlight }) {
             borderRadius: '8px',
             padding: '10px 14px',
             color: 'var(--text)',
-            fontSize: '14px',
-            outline: 'none',
           }}
         />
-        <button
-          onClick={handleSearch}
-          disabled={loading || !query.trim()}
-          style={{
-            background: 'var(--purple)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 18px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1
-          }}
-        >
+        <button onClick={handleSearch}>
           {loading ? '...' : 'Ask'}
         </button>
       </div>
 
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)', fontSize: '13px' }}>
-          Analyzing goal memory...
-        </div>
-      )}
-
-      {!loading && searched && results.length === 0 && (
-        <p style={{ color: 'var(--muted)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
-          No strong signals found — try adding more events.
-        </p>
-      )}
-
       {!loading && results.map((r, i) => (
-  <div
-    key={i}
-    onClick={() => onHighlight(r.goalName)}   // 🔥 ADD THIS
-    style={{
-      cursor: 'pointer',                     // 🔥 ADD THIS
-      background: 'var(--bg3)',
-      borderRadius: '10px',
-      padding: '14px',
-      marginBottom: '10px',
-      borderLeft: '3px solid var(--purple)'
-    }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>
-              {r.goalName}
-            </p>
-            {r.score && (
-              <span style={{
-                fontSize: '11px',
-                background: 'var(--bg2)',
-                color: 'var(--purple)',
-                padding: '2px 8px',
-                borderRadius: '99px',
-                border: '1px solid var(--border)'
-              }}>
-                {r.score}
-              </span>
-            )}
+        <div
+          key={i}
+          onClick={() => onHighlight(r.goalName)}
+          style={{
+            cursor: 'pointer',
+            background: 'var(--bg3)',
+            borderRadius: '10px',
+            padding: '14px',
+            marginBottom: '10px',
+            borderLeft: r.isFinal ? '4px solid #a78bfa' : '3px solid var(--purple)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <p style={{ fontWeight: '600' }}>{r.goalName}</p>
+            {r.score && <span>{r.score}</span>}
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+
+          <p style={{
+            marginTop: '6px',
+            color: r.isFinal ? '#a78bfa' : 'var(--muted)',
+            fontWeight: r.isFinal ? '600' : 'normal'
+          }}>
             {r.insight}
           </p>
         </div>
       ))}
-
-      {!searched && goals.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[
-            'Why is my top goal off track?',
-            'Which goal needs attention?',
-            'What patterns do you see?'
-          ].map(q => (
-            <button
-              key={q}
-              onClick={() => setQuery(q)}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                padding: '8px 14px',
-                color: 'var(--muted)',
-                fontSize: '13px',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
