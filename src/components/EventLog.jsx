@@ -116,27 +116,49 @@ export default function EventLog({ goal, onEventAdded }) {
             No events yet — log your first one above
           </p>
         )}
-        {[...(goal.events ?? [])].reverse().map(ev => (
-          <div key={ev.id} style={{
-            background: 'var(--bg3)',
-            borderRadius: '8px',
-            padding: '12px 14px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: ev.sentiment === 'positive' ? 'var(--teal)' : 'var(--muted)',
-                flexShrink: 0
-              }} />
-              <p style={{ fontSize: '13px', color: 'var(--text)' }}>{ev.text}</p>
-            </div>
-            <span style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{ev.date}</span>
-          </div>
-        ))}
+        {[...(goal.events ?? [])].reverse().map(ev => {
+  const type = getEventType(ev.text)
+
+  return (
+    <div key={ev.id} style={{
+      background: 'var(--bg3)',
+      borderRadius: '8px',
+      padding: '12px 14px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '12px'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        
+        <div style={{
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          background:
+            type === 'positive'
+              ? '#22c55e'   // green
+              : type === 'negative'
+              ? '#ef4444'   // red
+              : 'var(--muted)', // neutral
+          flexShrink: 0
+        }} />
+
+        <p style={{ fontSize: '13px', color: 'var(--text)' }}>
+          {ev.text}
+        </p>
+      </div>
+
+      <span style={{
+        fontSize: '11px',
+        color: 'var(--muted)',
+        whiteSpace: 'nowrap'
+      }}>
+        {ev.date}
+      </span>
+    </div>
+  )
+})}
       </div>
     </div>
   )
