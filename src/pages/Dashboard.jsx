@@ -10,7 +10,7 @@ export default function Dashboard() {
   const [goals, setGoals] = useState([
     {
       id: 1,
-      name: 'Hit ₹10L revenue by Q3',
+      name: 'Hit ₹10L revenue by Q3333',
       why: 'Needed to hire 2 more employees and expand operations',
       target: '2026-09-30',
       health: 0.75,
