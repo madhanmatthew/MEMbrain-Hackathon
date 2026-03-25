@@ -13,7 +13,7 @@ function getEventType(text) {
   ) {
     return "negative"
   }
-
+//dummy
   if (
     t.includes("closed") ||
     t.includes("growth") ||
